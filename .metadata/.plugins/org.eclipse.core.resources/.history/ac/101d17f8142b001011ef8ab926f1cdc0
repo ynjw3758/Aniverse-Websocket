@@ -1,0 +1,28 @@
+package com.Anivers.Patform.Websocket.Controller;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Controller;
+
+import com.Anivers.Patform.Websocket.Dto.ChatMessageDto;
+
+@Controller
+public class Message_Controller {
+	
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final SimpMessagingTemplate messagingTemplate = null;
+	
+    @MessageMapping("/app/chat.send") // ✅ 프론트의 /app/chat.send 와 매칭됨
+    public void receiveChatMessage(@Payload ChatMessageDto message) {
+        System.out.println("📩 채팅 수신: " + message.getMessage());
+
+        // ✅ 메시지 전송 대상: /topic/chat/{chatId}
+        messagingTemplate.convertAndSend(
+            "/topic/chat/" + message.getChatId(),
+            message
+        );
+    }
+}

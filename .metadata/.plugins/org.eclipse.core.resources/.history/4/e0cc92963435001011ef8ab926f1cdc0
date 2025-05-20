@@ -1,0 +1,80 @@
+package com.Anivers.Patform.Websocket.Kafka;
+
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@Service
+public class Produce {
+	
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final SimpMessagingTemplate messagingTemplate;
+	
+	
+	//@Autowired
+	private  KafkaTemplate<String, Object> kafkaTemplate;
+	
+    public Produce(KafkaTemplate<String, Object> kafkaTemplate,SimpMessagingTemplate messagingTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+        this.messagingTemplate = messagingTemplate;
+    }
+	
+	public void SendChat(Map<String ,Object> chat_infos)  {
+		String topic ="SendChat";
+
+
+		try {
+			kafkaTemplate.send(topic, chat_infos)
+            .whenComplete((result, ex) -> {
+		    if (ex != null) {
+		        logger.error("❌ Kafka 전송 실패", ex);
+	            Map<String, Object> errorMsg = new HashMap<>();
+	            errorMsg.put("reason", "메시지 전송에 실패했습니다.");
+	            errorMsg.put("timestamp", LocalDateTime.now().toString());
+
+	            messagingTemplate.convertAndSendToUser(
+	            		chat_infos.get("SendId").toString(), // 현재 로그인한 유저 ID
+	                "/queue/errors",
+	                errorMsg
+	                );
+		    } else {
+		        logger.info("✅ Kafka 전송 성공: topic={}, partition={}, offset={}",
+		                result.getRecordMetadata().topic(),
+		                result.getRecordMetadata().partition(),
+		                result.getRecordMetadata().offset());
+                // ✅ 프론트에게 전송 성공 알림
+                Map<String, Object> successMsg = new HashMap<>();
+                successMsg.put("type", "success");
+                successMsg.put("message", "메시지 전송 성공!");
+                successMsg.put("timestamp", LocalDateTime.now().toString());
+
+                messagingTemplate.convertAndSendToUser(
+                    chat_infos.get("SendId").toString(),
+                    "/queue/success",
+                    successMsg
+                );
+		    }
+		});
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			logger.error(" 에러 발생 :" + e);
+			e.printStackTrace();
+		}
+
+	}
+
+}

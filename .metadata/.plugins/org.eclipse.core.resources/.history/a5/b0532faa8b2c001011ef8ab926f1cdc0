@@ -1,0 +1,5 @@
+package com.Anivers.Patform.Websocket.Kafka;
+
+public class Produce {
+
+}

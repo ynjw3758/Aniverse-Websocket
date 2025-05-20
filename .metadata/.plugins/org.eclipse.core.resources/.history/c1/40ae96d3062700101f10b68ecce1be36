@@ -1,0 +1,76 @@
+package com.Anivers.Patform.Websocket.Services;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import com.Anivers.Patform.Websocket.Mapper.Login.Login_Mapper;
+
+@Service("login_Services")
+public class Login_Services {
+	
+	@Autowired
+	private Login_Mapper login;
+	
+	 private Logger logger = LoggerFactory.getLogger(this.getClass());
+	 
+	 
+	public void Calculate_duration(Map<String, Object> info) {
+		String login_time="";
+		login_time =login.getlogin_Time(info);
+		logger.info("현재 계산된 시간 :" + login_time);
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime targetTime = LocalDateTime.parse(login_time, formatter);
+
+        // 2. 현재 시간
+        LocalDateTime now = LocalDateTime.now();
+
+        // 3. Duration으로 차이 계산
+        Duration duration = Duration.between(targetTime, now);
+
+        long seconds = duration.getSeconds(); // ✅ 초단위 차이
+        System.out.println("초 차이: " + seconds + "초");
+		
+	}
+	 
+	@Async
+	@Transactional
+	public void Insert_LoginInfo(String UserId) {
+		
+		Map<String ,Object> login_info = new HashMap<>();
+        LocalDate today = LocalDate.now();
+        logger.info("로그인 날짜  :" + today);
+        LocalDateTime loging_start = LocalDateTime.now().withSecond(0).withNano(0);
+    	login_info.put("UserId", UserId);
+    	login_info.put("Login_Date", today);
+    	login_info.put("Login_Start", loging_start);
+	
+		login.Login_Start(login_info);
+		
+	}
+	
+	@Async
+	@Transactional
+	public void Uplodate_LoginInfo(String UserId) {
+		
+		Map<String ,Object> login_info = new HashMap<>();
+	     LocalDate today = LocalDate.now();
+	     logger.info("로그인 날짜  :" + today);
+		 LocalDateTime loging_start = LocalDateTime.now().withSecond(0).withNano(0);
+		 login_info.put("Login_date",  today);
+	   	 login_info.put("UserId",  UserId);
+	   	 login_info.put("Login_Start", loging_start);
+   	
+		 login.Login_again(login_info);
+	}
+
+}

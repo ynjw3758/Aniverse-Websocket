@@ -1,0 +1,140 @@
+package com.Anivers.Patform.Websocket.Handler;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import com.Anivers.Patform.Websocket.Mapper.Login.Login_Mapper;
+import com.Anivers.Patform.Websocket.Redis.Query;
+import com.Anivers.Patform.Websocket.Services.Login_Services;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+
+@Component("login_Handler")
+public class Login_Handler extends TextWebSocketHandler {
+	
+	@Autowired
+	private Login_Services log_service;
+	
+	@Autowired
+	private Login_Mapper login;
+	
+	
+	@Autowired
+	private Query Redis;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Map<String, Map<String, String>> loginMap = new ConcurrentHashMap<>();
+    
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) {
+    	logger.info("✅ WebSocket 연결 숫자: " + loginMap.size());
+    }
+
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        String payload = message.getPayload();
+
+        // JSON 파싱
+        Map<String, String> data = objectMapper.readValue(payload, Map.class);
+        Map<String, String> userInfo = new HashMap<>();
+        Map<String, Object> usersession_infos = new HashMap<>();
+        if(data.get("type").equals("login")) {
+        	logger.info("로그인");
+        	//todo:로그인 시 현재 log_active의 
+        	if(!loginMap.containsKey(data.get("Id"))) {//로그인 기록이 없다면 단순 저장
+        		boolean isday= false;
+        		Map<String, Object> exist_values= new HashMap<>();
+                LocalDate today = LocalDate.now();
+                exist_values.put("today", today);
+                exist_values.put("user_id", data.get("Id").toString());
+                logger.info("로그인 날짜  :" + today);
+                isday = login.Exist_days(exist_values);
+                logger.info("존재 : " +isday );
+                
+	        	userInfo.put("UserId", data.get("Id"));
+	        	userInfo.put("SessionId", session.getId());
+	        	
+	        	usersession_infos.put("UserId", data.get("Id"));
+	        	usersession_infos.put("SessionId", session.getId());
+	        	loginMap.put(data.get("Id"), userInfo);
+	        	
+	        	if(isday) {
+	        		Redis.LoginUserSave(usersession_infos);
+	        		log_service.Uplodate_LoginInfo(data.get("Id").toString());
+	        	}
+	        	else {
+	        		Redis.LoginUserSave(usersession_infos);
+	        		log_service.Insert_LoginInfo(data.get("Id").toString());
+	        	}
+	        	
+	        	
+	        	
+        	}
+        	else{
+        		logger.info("로그인 데이터 업데이트");
+        		boolean isday= false;
+        		Map<String, Object> exist_values= new HashMap<>();
+                LocalDate today = LocalDate.now();
+                exist_values.put("today", today);
+                exist_values.put("user_id", data.get("Id").toString());
+                logger.info("로그인 날짜  :" + today);
+                isday = login.Exist_days(exist_values);
+                logger.info("존재 : " +isday );
+                
+	        	userInfo.put("UserId", data.get("Id"));
+	        	userInfo.put("SessionId", session.getId());
+
+	        	usersession_infos.put("UserId", data.get("Id"));
+	        	usersession_infos.put("SessionId", session.getId());
+	        	loginMap.put(data.get("Id"), userInfo);
+	        	if(isday) {
+	        		Redis.LoginUserSave(usersession_infos);
+	        		log_service.Uplodate_LoginInfo(data.get("Id").toString());
+	        	}
+	        	else {
+	        		Redis.LoginUserSave(usersession_infos);
+	        		log_service.Insert_LoginInfo(data.get("Id").toString());
+	        	}
+        		
+        	}
+        }
+        else {
+        	logger.info("로그아웃");
+        	loginMap.remove(data.get("Id").toString());
+        	Map<String, Object> values =new HashMap<>();
+        	LocalDate today = LocalDate.now();
+        	values.put("user_id", data.get("Id").toString());
+        	values.put("today", today);
+        	Redis.LogoutUserDelete(data.get("Id").toString());
+        	log_service.Calculate_duration(values);
+        }
+
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+    	logger.info("❌ 연결 종료: " + status);
+    	//loginMap.remove(status)
+    }
+}

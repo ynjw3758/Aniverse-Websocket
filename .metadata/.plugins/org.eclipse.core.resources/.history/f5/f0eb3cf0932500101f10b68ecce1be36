@@ -1,0 +1,10 @@
+package com.Anivers.Patform.Websocket.Config;
+
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class Login_Mybatis {
+	
+	
+
+}

@@ -1,0 +1,86 @@
+package com.Anivers.Patform.Websocket.Handler;
+
+import java.nio.file.AccessDeniedException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.stereotype.Component;
+import com.Anivers.Patform.Websocket.Redis.Query;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+
+@Component("Stomp_Handler")
+public class Stomp_Handler implements ChannelInterceptor {
+	
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	
+    @Autowired
+    private Query RedisQuery;
+    
+    @Override
+    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+        StompHeaderAccessor accessor =
+            MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+        if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            String destination = accessor.getDestination(); // "/topic/chat/room123"
+            String chatId = extractChatId(destination);
+            String raw = accessor.getFirstNativeHeader("userId");   // 로그인 유저 ID
+            String type=accessor.getFirstNativeHeader("type");
+            List<String> userIds = new ArrayList<>();
+            
+            try {
+            	if(type.equals("Chat")) {
+                    // JSON 문자열을 파싱하기 위한 Jackson ObjectMapper
+                    ObjectMapper objectMapper = new ObjectMapper();
+
+                    // 문자열 "[\"cavlar\",\"chjw7894\"]" → List<String> 으로 변환
+                    userIds = objectMapper.readValue(raw, new TypeReference<List<String>>() {});
+                    logger.info("✅ userIds 파싱 성공: {}", userIds);
+                    boolean allowed = RedisQuery.isUserInChat(chatId, userIds);
+                    
+                    logger.info("결과 :" +allowed ); 
+                    if (!allowed) {
+                    	logger.error("에러 발생 ");
+                    	throw new MessagingException("❌ 채팅방 참여자가 아닙니다");
+                    }
+
+            	}
+            	else if(type.equals("Alarm")) {
+            		 logger.info("알람 stomp 연결");
+            	}
+
+                
+
+            } catch (Exception e) {
+                // 파싱 실패 시 예외 로그 출력
+                logger.error("❌ userIds 파싱 실패: {}", raw, e);
+                throw new MessagingException("❌ userIds 헤더 파싱 실패");
+            }
+
+            
+           
+            
+        }
+        
+        return message;
+    }
+
+    private String extractChatId(String destination) {
+        if (destination == null) return null;
+        String[] parts = destination.split("/");
+        return parts.length > 0 ? parts[parts.length - 1] : null;
+    }
+	
+
+}

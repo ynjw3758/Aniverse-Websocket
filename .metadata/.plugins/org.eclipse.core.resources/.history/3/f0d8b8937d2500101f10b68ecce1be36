@@ -1,0 +1,5 @@
+package com.Anivers.Patform.Websocket.Config;
+
+public class Websocket_Config {
+
+}

@@ -1,0 +1,19 @@
+package com.Anivers.Patform.Websocket.Mapper.Login;
+
+import java.util.Map;
+
+import org.springframework.stereotype.Repository;
+
+import lombok.Data;
+
+@Data
+@Repository
+public interface Login_Mapper {
+	
+	public void Login_Start(Map<String ,Object> info);
+	
+	public void Login_again(Map<String, Object> info);
+	
+	public void Caculate_duration(Map<String, Object> info);
+
+}

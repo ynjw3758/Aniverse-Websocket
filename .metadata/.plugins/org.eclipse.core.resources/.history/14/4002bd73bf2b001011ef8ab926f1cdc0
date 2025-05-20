@@ -1,0 +1,8 @@
+package com.Anivers.Patform.Websocket.Handler;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class Alarm_Handler {
+
+}

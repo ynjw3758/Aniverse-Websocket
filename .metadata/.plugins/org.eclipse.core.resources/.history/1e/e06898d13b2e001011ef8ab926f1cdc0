@@ -1,0 +1,33 @@
+package com.Anivers.Patform.Websocket;
+
+import org.springframework.boot.SpringApplication;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
+
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class WebsocketApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(WebsocketApplication.class, args);
+        try {
+            Map<String, Object> props = new HashMap<>();
+            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+            props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+            props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+            KafkaProducer<String, Object> producer = new KafkaProducer<>(props);
+
+            System.out.println("✅ KafkaProducer 생성 성공");
+        } catch (Exception e) {
+            System.out.println("❌ KafkaProducer 생성 실패");
+            e.printStackTrace(); // 여기서 반드시 실제 Caused by: 로그가 뜸
+        }
+	}
+
+}

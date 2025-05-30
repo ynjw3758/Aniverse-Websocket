@@ -39,73 +39,36 @@ public class Stomp_Handler implements ChannelInterceptor {
             // 개인 채널 (/user/...)은 검증 제외
             if (destination != null && destination.startsWith("/topic/chat/")) {
                 String chatId = extractChatId(destination);
-                String raw = accessor.getFirstNativeHeader("userId");
+                String row = accessor.getFirstNativeHeader("userId");
                 String type = accessor.getFirstNativeHeader("type");
+                String UserId = (String) accessor.getSessionAttributes().get("userId");
                 List<String> userIds = new ArrayList<>();
-
+                
                 try {
                     if ("Chat".equals(type)) {
                         ObjectMapper objectMapper = new ObjectMapper();
-                        userIds = objectMapper.readValue(raw, new TypeReference<List<String>>() {});
-                        logger.info("✅ userIds 파싱 성공: {}", userIds);
+                        userIds = objectMapper.readValue(row, new TypeReference<List<String>>() {});
+                        logger.info("✅ userIds 파싱 성공: {}", accessor);
+                        boolean allowed = RedisQuery.isUserInChat(chatId, userIds);
+                        logger.info("🔐 참여자 확인 결과: {}", allowed);
+                        if (!allowed) {
+                            throw new MessagingException("❌ 채팅방 참여자가 아닙니다.");
+                        }else RedisQuery.ChatParti(UserId, chatId);
+                        
                     } else if ("Alarm".equals(type)) {
                         logger.info("🔔 알람 stomp 연결됨");
                     }
                 } catch (Exception e) {
-                    logger.error("❌ userIds 파싱 실패 또는 검증 오류: {}", raw, e);
+                    logger.error("❌ userIds 파싱 실패 또는 검증 오류: {}", row, e);
                     throw new MessagingException("❌ userIds 헤더 파싱 실패");
                 }
-                boolean allowed = RedisQuery.isUserInChat(chatId, userIds);
-                logger.info("🔐 참여자 확인 결과: {}", allowed);
-                if (!allowed) {
-                    throw new MessagingException("❌ 채팅방 참여자가 아닙니다.");
-                }
             } else {
+            	String UserId = (String) accessor.getSessionAttributes().get("userId");
                 logger.info("✅ 개인 채널 구독은 검증 생략: {}", destination);
+                logger.info("UserId :" + UserId);
             }
         }
 
-        /*
-        if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-        	logger.info("stomp before : " + accessor);
-            String destination = accessor.getDestination(); // "/topic/chat/room123"
-            String chatId = extractChatId(destination);
-            String raw = accessor.getFirstNativeHeader("userId");   // 로그인 유저 ID
-            String type=accessor.getFirstNativeHeader("type");
-            List<String> userIds = new ArrayList<>();
-            
-            try {
-            	if(type.equals("Chat")) {
-                    // JSON 문자열을 파싱하기 위한 Jackson ObjectMapper
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    userIds = objectMapper.readValue(raw, new TypeReference<List<String>>() {});
-                    logger.info("✅ userIds 파싱 성공: {}", userIds);
-
-            	}
-            	else if(type.equals("Alarm")) {
-            		 logger.info("알람 stomp 연결");
-            	}
-
-                
-
-            } catch (Exception e) {
-                // 파싱 실패 시 예외 로그 출력
-                logger.error("❌ userIds 파싱 실패: {}", raw, e);
-                throw new MessagingException("❌ userIds 헤더 파싱 실패");
-            }
-            boolean allowed = RedisQuery.isUserInChat(chatId, userIds);
-            
-            logger.info("결과 :" +allowed ); 
-            if (!allowed) {
-            	logger.error("에러 발생 ");
-            	throw new MessagingException("❌ 채팅방 참여자가 아닙니다.");
-            }
-
-            
-           
-            
-        }
-        */
         return message;
     }
 

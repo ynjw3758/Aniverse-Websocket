@@ -1,0 +1,224 @@
+package com.Anivers.Patform.Websocket.Controller;
+
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Controller;
+import org.springframework.util.MimeTypeUtils;
+
+import java.security.Principal;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import com.Anivers.Patform.Websocket.Dto.ChatMessageDto;
+import com.Anivers.Patform.Websocket.Kafka.Produce;
+import com.Anivers.Patform.Websocket.Redis.Query;
+
+@Controller
+public class Message_Controller {
+	
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final SimpMessagingTemplate messagingTemplate;
+	
+	@Autowired
+	private Query Redis;
+	
+	@Autowired
+	private Produce kafka_producer;
+	
+    public Message_Controller(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate; // ✅ 여기서 초기화!
+    }
+	
+    @MessageMapping("/chat.send") // ✅ 프론트의 /app/chat.send 와 매칭됨
+    public void receiveChatMessage(@Payload ChatMessageDto message, Principal principal) {
+    	boolean isSuccess= false;
+    	Map<String, Object> Kafka_Proeducer = new HashMap<>();
+    	Map<String, Object> resultmsg = new HashMap<>();
+    	String uuid = UUID.randomUUID().toString();
+    	Kafka_Proeducer.put("ChatId", message.getChatId());
+    	Kafka_Proeducer.put("SendId", message.getSendId());
+    	Kafka_Proeducer.put("SendProfile", message.getProfile());
+    	Kafka_Proeducer.put("SendNickname", message.getNickname());
+    	Kafka_Proeducer.put("SendMsg", message.getMessage());
+    	Kafka_Proeducer.put("SendTime", message.getTimestamp());
+    	Kafka_Proeducer.put("ReCount", message.getRecount());
+    	Kafka_Proeducer.put("InviteIds", message.getInviteIds());
+    	Kafka_Proeducer.put("MessageId", uuid);
+    	resultmsg= kafka_producer.SendChat(Kafka_Proeducer);
+    	logger.info("issfirst : " + message.getFirst());
+    	if(resultmsg.get("result").equals(true)) {
+    		Map<String, Object> successMsg = new HashMap<>();
+    		successMsg.put("code", 200); // ✅ 200 OK
+    		successMsg.put("message", "초대된 유저에게 성공적으로 알림을 전송했습니다.");
+    		successMsg.put("timestamp", LocalDateTime.now().toString());
+
+    		messagingTemplate.convertAndSendToUser(
+    		    message.getSendId(),  // 현재 로그인한 유저 ID
+    		    "/queue/success",     // ✅ 성공 시 프론트가 구독 중인 채널
+    		    successMsg
+    		);
+        	for(String toUser : message.getInviteIds()) {
+        		logger.info("chatid :" + message.getChatId().toString());
+        		boolean isPartiUser =Redis.isParti(message.getChatId().toString(), toUser);
+        		if(isPartiUser) {
+        			logger.info("현재 채팅 방에 존재");
+        			Map<String, Object> read = new HashMap<>();
+        			read.put("ChatId", message.getChatId());
+        			read.put("UserId", toUser);
+        			read.put("MessageId", Kafka_Proeducer.get("MessageId").toString());
+        			kafka_producer.ChatRead(read);
+        		}
+        		else {
+        			logger.info("현재 채팅 방에 존재하지 않음");
+                	Map<String, Object> send_msg = new HashMap<>();
+                	send_msg.put("ChatId", message.getChatId());
+                	send_msg.put("SendId", message.getSendId());
+                	send_msg.put("SendProfile", message.getProfile());
+                	send_msg.put("SendNickname", message.getNickname());
+                	send_msg.put("SendMsg", message.getMessage());
+                	send_msg.put("SendTime", message.getTimestamp());
+                	
+            	    messagingTemplate.convertAndSendToUser(
+            	    		toUser,           // userId (principal name)
+            	        "/queue/notify",               // 대상 경로 (프론트는 여기를 구독해야 함)
+            	        send_msg                    // 보낼 데이터
+            	    );
+        		}
+        	}
+    		/*
+            if(message.getFirst() == false) {
+            	//todo:
+            	for(String toUser : message.getInviteIds()) {
+            		boolean isPartiUser =Redis.isParti(message.getChatId().toString(), toUser);
+            		if(isPartiUser) {
+            			logger.info("현재 채팅 방에 존재");
+            			Map<String, Object> read = new HashMap<>();
+            			read.put("ChatId", message.getChatId());
+            			read.put("UserId", toUser);
+            			read.put("MessageId", Kafka_Proeducer.get("MessageId").toString());
+            			kafka_producer.ChatRead(read);
+            		}
+            		else {
+            			logger.info("현재 채팅 방에 존재하지 않음");
+                    	Map<String, Object> send_msg = new HashMap<>();
+                    	send_msg.put("ChatId", message.getChatId());
+                    	send_msg.put("SendId", message.getSendId());
+                    	send_msg.put("SendProfile", message.getProfile());
+                    	send_msg.put("SendNickname", message.getNickname());
+                    	send_msg.put("SendMsg", message.getMessage());
+                    	send_msg.put("SendTime", message.getTimestamp());
+                    	
+                	    messagingTemplate.convertAndSendToUser(
+                	    		toUser,           // userId (principal name)
+                	        "/queue/notify",               // 대상 경로 (프론트는 여기를 구독해야 함)
+                	        send_msg                    // 보낼 데이터
+                	    );
+            		}
+            		
+            	}
+                // ✅ 메시지 전송 대상: /topic/chat/{chatId}
+            	/*
+                messagingTemplate.convertAndSend(
+                    "/topic/chat/" + message.getChatId(),
+                    message
+                );
+                */
+            }else {
+            	try {
+            	if (message.getInviteIds() != null && !message.getInviteIds().isEmpty()) {
+            		for(String toUser : message.getInviteIds()) {
+                    	String SessionId = Redis.getUserSession(toUser);
+                    	Map<String, Object> send_msg = new HashMap<>();
+                    	send_msg.put("ChatId", message.getChatId());
+                    	send_msg.put("SendId", message.getSendId());
+                    	send_msg.put("SendProfile", message.getProfile());
+                    	send_msg.put("SendNickname", message.getNickname());
+                    	send_msg.put("SendMsg", message.getMessage());
+                    	send_msg.put("SendTime", message.getTimestamp());
+                    	JSONObject json = new JSONObject(send_msg);
+                    	if (SessionId != null) {
+                    		for(String UserIds : message.getInviteIds()) {
+                        	    // userId를 기준으로 /user/{userId}/queue/notify 에 메시지 전송
+                        	    messagingTemplate.convertAndSendToUser(
+                        	    		UserIds,           // userId (principal name)
+                        	        "/queue/notify",               // 대상 경로 (프론트는 여기를 구독해야 함)
+                        	        send_msg                    // 보낼 데이터
+                        	    );
+                    		}
+                    		
+                    	} else {
+                    	    logger.warn("❌ 세션 ID를 찾을 수 없습니다: {}", message.getSendId());
+                            Map<String, Object> errorMsg = new HashMap<>();
+                            errorMsg.put("code",1005);
+                            errorMsg.put("reason", "보낸 사람 아이디를 확인할수 없음");
+                            errorMsg.put("timestamp", LocalDateTime.now().toString());
+                            
+                            messagingTemplate.convertAndSendToUser(
+                            		message.getSendId(), 
+                                "/queue/errors",
+                                errorMsg
+                                );
+                    	}
+            		}
+            		
+            	}
+            	else {
+            		logger.error("초대 맴버의 데이터가 존재하지 않습니다");
+                    Map<String, Object> errorMsg = new HashMap<>();
+                    errorMsg.put("code",1005);
+                    errorMsg.put("reason", "초대 맴버의 데이터가 존재하지 않습니다");
+                    errorMsg.put("timestamp", LocalDateTime.now().toString());
+                    
+                    messagingTemplate.convertAndSendToUser(
+                    		message.getSendId(), 
+                        "/queue/errors",
+                        errorMsg
+                        );
+            	}
+            	}catch(Exception e) {
+            		logger.error("전송된 데이터가 비어있는 에러 발생" + e);
+                    Map<String, Object> errorMsg = new HashMap<>();
+                    errorMsg.put("code",1005);
+                    errorMsg.put("reason", "전송된 데이터가 비어있는 에러 발생");
+                    errorMsg.put("timestamp", LocalDateTime.now().toString());
+                    
+                    messagingTemplate.convertAndSendToUser(
+                    		message.getSendId(), // 현재 로그인한 유저 ID
+                        "/queue/errors",
+                        errorMsg
+                        );
+            	}
+
+            }
+            */
+    	}
+    	else {
+    		logger.info("프론트에게 보낸다 :" + principal.getName());
+            Map<String, Object> errorMsg = new HashMap<>();
+            errorMsg.put("code",1002);
+            errorMsg.put("reason","전송 실패");
+            errorMsg.put("timestamp", LocalDateTime.now().toString());
+            messagingTemplate.convertAndSendToUser(
+            		message.getSendId(), // 현재 로그인한 유저 ID
+                "/queue/errors",
+                errorMsg,
+                createJsonHeader()
+                );
+            
+    	}
+
+    }
+    private MessageHeaders createJsonHeader() {
+        Map<String, Object> headerMap = new HashMap<>();
+        headerMap.put(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON);
+        return new MessageHeaders(headerMap);
+    }
+}

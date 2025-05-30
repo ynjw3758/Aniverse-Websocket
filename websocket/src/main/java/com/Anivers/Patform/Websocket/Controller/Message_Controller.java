@@ -15,25 +15,27 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-
 import com.Anivers.Patform.Websocket.Dto.ChatMessageDto;
 import com.Anivers.Patform.Websocket.Kafka.Produce;
 import com.Anivers.Patform.Websocket.Redis.Query;
+import com.Anivers.Patform.Websocket.dispatcher.Chat_dispatcher;
 
 @Controller
 public class Message_Controller {
 	
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private final SimpMessagingTemplate messagingTemplate;
-	
-	@Autowired
 	private Query Redis;
-	
-	@Autowired
 	private Produce kafka_producer;
+	private Chat_dispatcher ch_dispatcher;
 	
-    public Message_Controller(SimpMessagingTemplate messagingTemplate) {
+    public Message_Controller(SimpMessagingTemplate messagingTemplate, Produce kafka_producer ,Query Redis,
+    		Chat_dispatcher ch_dispatcher) {
         this.messagingTemplate = messagingTemplate; // ✅ 여기서 초기화!
+        this.kafka_producer = kafka_producer;
+        this.Redis =Redis;
+        this.ch_dispatcher = ch_dispatcher;
+        
     }
 	
     @MessageMapping("/chat.send") // ✅ 프론트의 /app/chat.send 와 매칭됨
@@ -49,16 +51,89 @@ public class Message_Controller {
     	Kafka_Proeducer.put("SendTime", message.getTimestamp());
     	Kafka_Proeducer.put("ReCount", message.getRecount());
     	Kafka_Proeducer.put("InviteIds", message.getInviteIds());
+    	Kafka_Proeducer.put("MessageId", message.getMessageId());
     	resultmsg= kafka_producer.SendChat(Kafka_Proeducer);
-    	logger.info("resultmsg : " +resultmsg.get("result").equals(true));
+  
     	if(resultmsg.get("result").equals(true)) {
-    		
+    		Map<String, Object> successMsg = new HashMap<>();
+    		successMsg.put("code", 200); // ✅ 200 OK
+    		successMsg.put("message", "초대된 유저에게 성공적으로 알림을 전송했습니다.");
+    		successMsg.put("timestamp", LocalDateTime.now().toString());
+    		messagingTemplate.convertAndSendToUser(
+    		    message.getSendId(),  // 현재 로그인한 유저 ID
+    		    "/queue/success",     // ✅ 성공 시 프론트가 구독 중인 채널
+    		    successMsg
+    		);
+
+        	for(String toUser : message.getInviteIds()) {
+        		
+        		boolean isPartiUser =Redis.isParti(message.getChatId().toString(), toUser);
+        		if(isPartiUser) {
+        			logger.info("현재 채팅 방에 존재");
+        			Map<String, Object> read = new HashMap<>();
+        			read.put("ChatId", message.getChatId());
+        			read.put("UserId", toUser);
+        			read.put("MessageId", message.getMessageId());
+        			read.put("LastTime", message.getTimestamp());
+        			ch_dispatcher.ReatTimeRead(read);
+        		}
+        		else {
+        			logger.info("현재 채팅 방에 존재하지 않음");
+        			boolean isLogin = Redis.login_state(toUser);
+        			if(isLogin == true) {
+                    	Map<String, Object> send_msg = new HashMap<>();
+                    	send_msg.put("ChatId", message.getChatId());
+                    	send_msg.put("SendId", message.getSendId());
+                    	send_msg.put("SendProfile", message.getProfile());
+                    	send_msg.put("SendNickname", message.getNickname());
+                    	send_msg.put("SendMsg", message.getMessage());
+                    	send_msg.put("SendTime", message.getTimestamp());
+                    	send_msg.put("MessageId", message.getMessageId());
+                    	
+                	    messagingTemplate.convertAndSendToUser(
+                	    		toUser,           // userId (principal name)
+                	        "/queue/notify",               // 대상 경로 (프론트는 여기를 구독해야 함)
+                	        send_msg                    // 보낼 데이터
+                	    );
+                	    
+            		}else {
+            			logger.info("현재 로그인하지 않음 알람 저장");
+            		}
+        			}
+
+        	}
+    		/*
             if(message.getFirst() == false) {
-                // ✅ 메시지 전송 대상: /topic/chat/{chatId}
-                messagingTemplate.convertAndSend(
-                    "/topic/chat/" + message.getChatId(),
-                    message
-                );
+            	//todo:
+            	for(String toUser : message.getInviteIds()) {
+            		boolean isPartiUser =Redis.isParti(message.getChatId().toString(), toUser);
+            		if(isPartiUser) {
+            			logger.info("현재 채팅 방에 존재");
+            			Map<String, Object> read = new HashMap<>();
+            			read.put("ChatId", message.getChatId());
+            			read.put("UserId", toUser);
+            			read.put("MessageId", Kafka_Proeducer.get("MessageId").toString());
+            			kafka_producer.ChatRead(read);
+            		}
+            		else {
+            			logger.info("현재 채팅 방에 존재하지 않음");
+                    	Map<String, Object> send_msg = new HashMap<>();
+                    	send_msg.put("ChatId", message.getChatId());
+                    	send_msg.put("SendId", message.getSendId());
+                    	send_msg.put("SendProfile", message.getProfile());
+                    	send_msg.put("SendNickname", message.getNickname());
+                    	send_msg.put("SendMsg", message.getMessage());
+                    	send_msg.put("SendTime", message.getTimestamp());
+                    	
+                	    messagingTemplate.convertAndSendToUser(
+                	    		toUser,           // userId (principal name)
+                	        "/queue/notify",               // 대상 경로 (프론트는 여기를 구독해야 함)
+                	        send_msg                    // 보낼 데이터
+                	    );
+            		}
+            		
+            	}
+
             }else {
             	try {
             	if (message.getInviteIds() != null && !message.getInviteIds().isEmpty()) {
@@ -126,30 +201,14 @@ public class Message_Controller {
             	}
 
             }
-    	}else {
+            */
+    	}
+    	else {
     		logger.info("프론트에게 보낸다 :" + principal.getName());
             Map<String, Object> errorMsg = new HashMap<>();
             errorMsg.put("code",1002);
             errorMsg.put("reason","전송 실패");
             errorMsg.put("timestamp", LocalDateTime.now().toString());
-            /*
-            if(resultmsg.get("reason").equals("메시지")) {
-                errorMsg.put("code",1001);
-                errorMsg.put("reason",resultmsg.get("reason").toString());
-                errorMsg.put("timestamp", LocalDateTime.now().toString());
-            }
-            else if(resultmsg.get("reason").equals("타임아웃")) {
-                errorMsg.put("code",1002);
-                errorMsg.put("reason",resultmsg.get("reason").toString());
-                errorMsg.put("timestamp", LocalDateTime.now().toString());
-            }
-            else if(resultmsg.get("reason").equals("연결실패")) {
-                errorMsg.put("code",1003);
-                errorMsg.put("reason",resultmsg.get("reason").toString());
-                errorMsg.put("timestamp", LocalDateTime.now().toString());
-            }
-*/
-            
             messagingTemplate.convertAndSendToUser(
             		message.getSendId(), // 현재 로그인한 유저 ID
                 "/queue/errors",

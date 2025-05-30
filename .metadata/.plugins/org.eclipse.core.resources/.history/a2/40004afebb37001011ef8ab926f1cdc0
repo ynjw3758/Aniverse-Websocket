@@ -1,0 +1,96 @@
+	package com.Anivers.Patform.Websocket.Config;
+	
+	import org.slf4j.Logger;
+	import org.slf4j.LoggerFactory;
+	import org.springframework.beans.factory.annotation.Autowired;
+	import org.springframework.beans.factory.annotation.Qualifier;
+	import org.springframework.context.annotation.Configuration;
+	import org.springframework.messaging.simp.config.ChannelRegistration;
+	import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+	import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+	import org.springframework.web.socket.WebSocketHandler;
+	import org.springframework.web.socket.config.annotation.EnableWebSocket;
+	import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+	import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+	import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
+	import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+	import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+	import org.springframework.web.socket.server.HandshakeInterceptor;
+	import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
+	
+	import com.Anivers.Patform.Websocket.Handler.Alarm_Handler;
+	import com.Anivers.Patform.Websocket.Handler.Stomp_Handler;
+	
+	import lombok.RequiredArgsConstructor;
+	
+	@Configuration
+	@EnableWebSocketMessageBroker
+	@EnableWebSocket
+	@RequiredArgsConstructor
+	public class Websocket_Config implements WebSocketMessageBrokerConfigurer, WebSocketConfigurer {
+		
+		private Logger logger = LoggerFactory.getLogger(this.getClass());
+	
+	    private final WebSocketHandler loginWebSocketHandler;
+	    private final WebSocketHandler chatWebSocketHandler;
+	    private final Stomp_Handler chatSubscribeInterceptor;
+	    private final WebSocketHandler AlarmWebSocketHandler;
+	    private final HandshakeInterceptor authInterceptor;
+	    private final DefaultHandshakeHandler handshakeHandler;
+	
+	    public Websocket_Config(
+	        @Qualifier("login_Handler") WebSocketHandler loginWebSocketHandler,
+	        @Qualifier("chat_Handler") WebSocketHandler chatWebSocketHandler,
+	        @Qualifier("Stomp_Handler") Stomp_Handler chatSubscribeInterceptor,
+	        @Qualifier("Alarm_Handler") WebSocketHandler AlarmWebSocketHandler,
+	        HandshakeInterceptor authInterceptor,
+	        DefaultHandshakeHandler handshakeHandler
+	    ) {
+	        this.loginWebSocketHandler = loginWebSocketHandler;
+	        this.chatWebSocketHandler = chatWebSocketHandler;
+	        this.chatSubscribeInterceptor = chatSubscribeInterceptor;
+	        this.AlarmWebSocketHandler = AlarmWebSocketHandler;
+	        this.authInterceptor = authInterceptor;
+	        this.handshakeHandler = handshakeHandler;
+	    }
+	
+	    @Override
+	    public void configureClientInboundChannel(ChannelRegistration registration) {
+	        registration.interceptors(chatSubscribeInterceptor); // ✅ interceptor 등록!
+	    }
+	
+	    // 🔹 STOMP 방식 설정 (/ws)
+	    @Override
+	    public void configureMessageBroker(MessageBrokerRegistry registry) {
+	        registry.enableSimpleBroker("/topic", "/queue", "/user");           // pub/sub 브로커
+	        registry.setApplicationDestinationPrefixes("/app");        // 클라이언트 → 서버
+	        registry.setUserDestinationPrefix("/user");                // 서버 → 특정 유저
+	    }
+	
+	    @Override
+	    public void registerStompEndpoints(StompEndpointRegistry registry) {
+	        registry.addEndpoint("/ws")
+	                .addInterceptors(authInterceptor)         // 🔹 인터셉터 추가
+	                 .setHandshakeHandler(handshakeHandler)    // 🔹 핸드셰이크 핸들러 추가                         // WebSocket STOMP 연결 지점
+	                .setAllowedOriginPatterns("http://localhost:3000")
+	                .withSockJS();
+	    }
+	
+	    // 🔹 Native WebSocket 방식 설정 (/login)
+	    @Override
+	    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+	    	logger.info("loginWebSocketHandler :" ,loginWebSocketHandler);
+	        registry.addHandler(loginWebSocketHandler, "/login")      // 로그인 전용 핸들러
+	                .setAllowedOriginPatterns("http://localhost:3000");
+	        
+	        // ✅ 채팅 핸들러 추가
+	        registry.addHandler(chatWebSocketHandler, "/chat")
+	                .setAllowedOriginPatterns("http://localhost:3000");
+	        
+	        registry.addHandler(AlarmWebSocketHandler, "/alarm")
+	        .setAllowedOriginPatterns("http://localhost:3000");
+	    }
+	    
+	    
+	
+	}

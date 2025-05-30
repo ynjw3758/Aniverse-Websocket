@@ -15,10 +15,19 @@ public class ChatMessageDto {
     private boolean first;
     private List<String> inviteIds;
     private int recount;
+    private String messageId;
 
     // ✅ 기본 생성자, getter/setter
     public ChatMessageDto() {}
     
+	public void setMessageId(String messageId) {
+	  	 this.messageId = messageId;
+	  }
+	  
+	  public String getMessageId() {
+	  	return messageId;
+	  }
+	    
     public void setRecount(int recount) {
    	 this.recount = recount;
    }

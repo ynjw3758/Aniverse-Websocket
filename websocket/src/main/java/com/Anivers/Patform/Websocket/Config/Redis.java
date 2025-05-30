@@ -63,6 +63,26 @@ public class Redis {
 	        redisTemplate.setEnableTransactionSupport(true);
 	        return redisTemplate;
 	    }
+	    
+	    @Bean
+	    public RedisConnectionFactory redisConnectionFactory6() {
+	        LettuceConnectionFactory factory = new LettuceConnectionFactory(host, port);
+	        factory.setDatabase(6);
+	        factory.afterPropertiesSet();
+	        return factory;
+	    }
+
+	    @Bean(name = "ChatPartiList")
+	    public RedisTemplate<String, Object> redisTemplate6() {
+	        RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
+	        redisTemplate.setConnectionFactory(redisConnectionFactory6());
+	        redisTemplate.setKeySerializer(new StringRedisSerializer());
+	        redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+	        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
+	        redisTemplate.setHashValueSerializer(new StringRedisSerializer());
+	        redisTemplate.setEnableTransactionSupport(true);
+	        return redisTemplate;
+	    }
 
 	    // ✅ 기본 redisTemplate는 계속 유지 가능
 	    @Bean

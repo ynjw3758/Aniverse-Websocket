@@ -1,5 +1,6 @@
 package com.Anivers.Patform.Websocket.Redis;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -7,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.BoundSetOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +24,42 @@ public class Query {
 	@Autowired
 	@Qualifier("LoginUserList") // 참여자 저장용
 	private RedisTemplate<String, Object> LoginUserList;
+	
+	@Autowired
+	@Qualifier("ChatPartiList") // 참여자 저장용
+	private RedisTemplate<String, Object> ChatPartiList;
+	
+	
+	public boolean isParti(String ChatId, String UserId) {
+		
+		boolean result= false;
+		BoundSetOperations<String, Object> chatPartiOps = ChatPartiList.boundSetOps(ChatId);
+		try{
+			result = chatPartiOps.isMember(UserId);
+			
+		}catch(Exception e) {
+			logger.error("에러 발생 :" + e);
+		}
+		
+		
+		return result;
+	}
+	
+	public void ChatParti(String UserId, String ChatId) {
+		try {
+			BoundSetOperations<String, Object> chatPartiOps = ChatPartiList.boundSetOps(ChatId);
+			BoundSetOperations<String, Object> limitOps = CheckMember.boundSetOps(ChatId);
+			Long limit = limitOps.size();
+			Long current_parti = chatPartiOps.size();
+		if(limit > current_parti) {
+				logger.info("추가");
+				chatPartiOps.add(UserId);
+		}
+		}catch(Exception e) {
+			logger.error("에러 발생 :" + e);
+		}
+	}
+	
 
     // Redis에서 해당 채팅방의 참여자인지 검사
     public boolean isUserInChat(String chatId, List<String> userId) {

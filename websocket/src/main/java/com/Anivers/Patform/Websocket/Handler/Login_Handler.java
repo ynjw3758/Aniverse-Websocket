@@ -70,14 +70,8 @@ public class Login_Handler extends TextWebSocketHandler {
                 exist_values.put("user_id", data.get("Id").toString());
                 logger.info("로그인 날짜  :" + today);
                 isday = login.Exist_days(exist_values);
-                logger.info("존재 : " +isday );
-                
-	        	//userInfo.put("UserId", data.get("Id"));
-	        	//userInfo.put("SessionId", session.getId());
-	        	
 	        	usersession_infos.put("UserId", data.get("Id"));
 	        	usersession_infos.put("SessionId", session.getId());
-	        	//loginMap.put(data.get("Id"), userInfo);
 	        	
 	        	if(isday) {
 	        		Redis.LoginUserSave(usersession_infos);
@@ -87,9 +81,7 @@ public class Login_Handler extends TextWebSocketHandler {
 	        		Redis.LoginUserSave(usersession_infos);
 	        		log_service.Insert_LoginInfo(data.get("Id").toString());
 	        	}
-	        	
-	        	
-	        	
+
         	}
         	else{
         		logger.info("로그인 데이터 업데이트");
@@ -101,13 +93,9 @@ public class Login_Handler extends TextWebSocketHandler {
                 logger.info("로그인 날짜  :" + today);
                 isday = login.Exist_days(exist_values);
                 logger.info("존재 : " +isday );
-                
-	        	//userInfo.put("UserId", data.get("Id"));
-	        	//userInfo.put("SessionId", session.getId());
 
 	        	usersession_infos.put("UserId", data.get("Id"));
 	        	usersession_infos.put("SessionId", session.getId());
-	        	//loginMap.put(data.get("Id"), userInfo);
 	        	if(isday) {
 	        		Redis.LoginUserSave(usersession_infos);
 	        		log_service.Uplodate_LoginInfo(data.get("Id").toString());
@@ -122,7 +110,6 @@ public class Login_Handler extends TextWebSocketHandler {
         else {
         	logger.info("로그아웃 및 페이지 나가기");
         	Redis.LogoutUserDelete(data.get("Id").toString());
-        	//loginMap.remove(data.get("Id").toString());
         	Map<String, Object> values =new HashMap<>();
         	LocalDate today = LocalDate.now();
         	values.put("user_id", data.get("Id").toString());

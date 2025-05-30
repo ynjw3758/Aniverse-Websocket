@@ -1,6 +1,8 @@
 package com.Anivers.Patform.Websocket.Handler;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -14,7 +16,11 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+//import com.Anivers.Patform.Websocket.Dto.LastChatRead;
+//import com.Anivers.Patform.Websocket.Kafka.Produce;
+//import com.Anivers.Patform.Websocket.Mongo.Query_Mongo;
 import com.Anivers.Patform.Websocket.Services.Chat_Services;
+import com.Anivers.Patform.Websocket.dispatcher.Chat_dispatcher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component("chat_Handler")
@@ -22,25 +28,30 @@ public class Chat_Handler extends TextWebSocketHandler {
 	
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 	private final ObjectMapper objectMapper = new ObjectMapper();
-	private final Map<String, Map<String, String>> ChatMap = new ConcurrentHashMap<>();
+	private Chat_dispatcher ch_dispatcher;
 	
-	@Autowired
-	private Chat_Services Chat;
+	public Chat_Handler(Chat_dispatcher ch_dispatcher) {
+		this.ch_dispatcher = ch_dispatcher;
+	}
 	
 	  @Override
 	    public void afterConnectionEstablished(WebSocketSession session) {
-	    	logger.info("✅ WebSocket 연결 숫자: ");
+	    	logger.info("✅ chat_webo socket  연결 ");
 	    }
 
 	    @Override
 	    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 	        String payload = message.getPayload();
-
 	        // JSON 파싱
 	        Map<String, Object> data = objectMapper.readValue(payload, Map.class);
 	       logger.info("넘어온 데이터 :" + data);
-	       if(data.get("type").equals("chat")) {
-	    	   Chat.SendChat(data);
+	       if(data.get("type").equals("ChatJoin")) {
+	    	   Map<String, Object> values = new HashMap<>();
+	    	   values.put("UserId", data.get("UserId").toString());
+	    	   values.put("ChatId", data.get("ChatId").toString());
+	    	   logger.info("데이터 넘기기전에 조회해서 해당 db의 아이디만 브로드캐스팅하자");
+	    	   ch_dispatcher.ReadCnt(data);
+
 	       }
 
 	    }
@@ -48,6 +59,5 @@ public class Chat_Handler extends TextWebSocketHandler {
 	    @Override
 	    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
 	    	logger.info("❌ 연결 종료: " + status);
-	    	//loginMap.remove(status)
 	    }
 }

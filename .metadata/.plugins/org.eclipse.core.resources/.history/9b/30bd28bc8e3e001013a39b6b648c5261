@@ -1,0 +1,32 @@
+package com.Anivers.Patform.Websocket.dispatcher;
+
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
+import com.Anivers.Patform.Websocket.Services.Chat_Services;
+
+@Service
+public class Chat_dispatcher {
+	
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private Chat_Services ch_services;
+	
+	public Chat_dispatcher(@Lazy Chat_Services ch_services) {
+		this.ch_services =ch_services; 
+	}
+	
+	public void ReatTimeRead(Map<String ,Object> info) {
+		logger.info("실시간 읽음 처리");
+		ch_services.RealTimeRead(info);
+	}
+	
+	public void ReadCnt(Map<String ,Object> info) {
+		logger.info("한번에 앓읽은 채팅 처리");
+		ch_services.ReadCnt(info);
+	}
+
+}

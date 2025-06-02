@@ -79,12 +79,12 @@
 	    // 🔹 Native WebSocket 방식 설정 (/login)
 	    @Override
 	    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-	    	logger.info("loginWebSocketHandler :" ,loginWebSocketHandler);
-	        registry.addHandler(loginWebSocketHandler, "/login")      // 로그인 전용 핸들러
+	        registry.addHandler(loginWebSocketHandler, "/login")     // 로그인 전용 핸들러
 	                .setAllowedOriginPatterns("http://localhost:3000");
 	        
 	        // ✅ 채팅 핸들러 추가
 	        registry.addHandler(chatWebSocketHandler, "/chat")
+	        .addInterceptors(authInterceptor)
 	                .setAllowedOriginPatterns("http://localhost:3000");
 	        
 	        registry.addHandler(AlarmWebSocketHandler, "/alarm")

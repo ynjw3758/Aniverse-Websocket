@@ -1,5 +1,0 @@
-package com.Anivers.Patform.Websocket.Mapper.Login;
-
-public interface Login_Mapper {
-
-}

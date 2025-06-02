@@ -36,12 +36,12 @@ public class Alarm_Handler extends TextWebSocketHandler {
 	        // JSON 파싱
 	        Map<String, Object> data = objectMapper.readValue(payload, Map.class);
 	       logger.info(" 알람 :" + data);
-	       /*
+	       
 	       Map<String, Object> infos =new HashMap<>();
 	       infos.put("UserId", data.get("Id").toString());
 	       infos.put("SessionId", session.getId());
 	       Alarm.SubAlarm(infos);
-	       */
+	       
 
 	    }
 

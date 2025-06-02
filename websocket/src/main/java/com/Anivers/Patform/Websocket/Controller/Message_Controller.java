@@ -75,6 +75,8 @@ public class Message_Controller {
         			read.put("UserId", toUser);
         			read.put("MessageId", message.getMessageId());
         			read.put("LastTime", message.getTimestamp());
+        			Kafka_Proeducer.put("type", "other");
+        			//ch_dispatcher.SendChatMessage(Kafka_Proeducer);
         			ch_dispatcher.ReatTimeRead(read);
         		}
         		else {

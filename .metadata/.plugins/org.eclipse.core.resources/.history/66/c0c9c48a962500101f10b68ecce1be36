@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.Anivers.Patform.Websocket.Mapper.Login.Login_Mapper">
-
-<insert id="Login_Start" parameterType="java.util.HashMap">
-insert into log_active(userid, session_id, login_date, login_time)
-values()
-</insert>
-</mapper>

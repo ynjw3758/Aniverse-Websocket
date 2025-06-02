@@ -25,8 +25,15 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor{
             HttpServletRequest req = servletRequest.getServletRequest();
             logger.info("req 파라미터 :" + req.getParameter("userid"));
             String userId = req.getParameter("userid");  // ex) ws://...?userId=cavlar
-            if (userId != null) {
+            String chatId = req.getParameter("chatid");
+            if (userId != null && chatId != null) {
+            	logger.info("여기에 추가 가능? :" + userId);
+            	logger.info("여기에 추가 가능? :" + chatId);
                 attributes.put("userId", userId);       // Principal로 넘기기 위한 준비
+                attributes.put("chatId", chatId);
+            }
+            else if(userId != null && chatId == null) {
+            	attributes.put("userId", userId);  
             }
         }
         return true;

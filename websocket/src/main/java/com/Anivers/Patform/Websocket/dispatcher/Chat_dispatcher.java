@@ -15,8 +15,14 @@ public class Chat_dispatcher {
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 	private Chat_Services ch_services;
 	
+	
 	public Chat_dispatcher(@Lazy Chat_Services ch_services) {
 		this.ch_services =ch_services; 
+	}
+	
+	
+	public void SendChatMessage(Map<String, Object> infos) {
+		ch_services.SendChatMessage(infos);
 	}
 	
 	public void ReatTimeRead(Map<String ,Object> info) {

@@ -16,6 +16,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.Anivers.Patform.Websocket.Redis.Query;
 //import com.Anivers.Patform.Websocket.Dto.LastChatRead;
 //import com.Anivers.Patform.Websocket.Kafka.Produce;
 //import com.Anivers.Patform.Websocket.Mongo.Query_Mongo;
@@ -29,9 +30,11 @@ public class Chat_Handler extends TextWebSocketHandler {
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	private Chat_dispatcher ch_dispatcher;
+	private Query Redis;
 	
-	public Chat_Handler(Chat_dispatcher ch_dispatcher) {
+	public Chat_Handler(Chat_dispatcher ch_dispatcher ,Query Redis) {
 		this.ch_dispatcher = ch_dispatcher;
+		this.Redis = Redis;
 	}
 	
 	  @Override
@@ -47,9 +50,15 @@ public class Chat_Handler extends TextWebSocketHandler {
 	       logger.info("넘어온 데이터 :" + data);
 	       if(data.get("type").equals("ChatJoin")) {
 	    	   Map<String, Object> values = new HashMap<>();
-	    	   values.put("UserId", data.get("UserId").toString());
-	    	   values.put("ChatId", data.get("ChatId").toString());
-	    	   logger.info("데이터 넘기기전에 조회해서 해당 db의 아이디만 브로드캐스팅하자");
+	    	   String UserId = data.get("UserId").toString();
+	    	   String ChatId = data.get("ChatId").toString();
+	    	   values.put("UserId", UserId);
+	    	   values.put("ChatId", ChatId);
+	    	   
+	    	    session.getAttributes().put("UserId", UserId);
+	    	    session.getAttributes().put("ChatId", ChatId);
+	    	    
+	    	   logger.info("데이터 넘기기전에 조회해서 해당 db의 아이디만 브로드캐스팅하자 : "+ session);
 	    	   ch_dispatcher.ReadCnt(data);
 
 	       }
@@ -58,6 +67,12 @@ public class Chat_Handler extends TextWebSocketHandler {
 
 	    @Override
 	    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-	    	logger.info("❌ 연결 종료: " + status);
+	    	logger.info("❌ 연결 종료: " + session);
+	        String userId = (String) session.getAttributes().get("UserId");
+	        String chatId = (String) session.getAttributes().get("ChatId");
+	        logger.info("chatid :" + chatId);
+	        logger.info("userId :" + userId);
+	        Redis.ChatRemoveParti(userId, chatId);
+	        
 	    }
 }

@@ -47,10 +47,11 @@ public class Stomp_Handler implements ChannelInterceptor {
                 try {
                     if ("Chat".equals(type)) {
                         ObjectMapper objectMapper = new ObjectMapper();
+                        
                         userIds = objectMapper.readValue(row, new TypeReference<List<String>>() {});
-                        logger.info("✅ userIds 파싱 성공: {}", accessor);
+                        logger.info("chatid:" + chatId);
                         boolean allowed = RedisQuery.isUserInChat(chatId, userIds);
-                        logger.info("🔐 참여자 확인 결과: {}", allowed);
+                        logger.info("아 오냐?" + userIds);
                         if (!allowed) {
                             throw new MessagingException("❌ 채팅방 참여자가 아닙니다.");
                         }else RedisQuery.ChatParti(UserId, chatId);

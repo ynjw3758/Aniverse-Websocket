@@ -33,6 +33,31 @@ public class Produce {
     }
     
     @Async
+    public void RealTimeReacdChat(Map<String , Object> infos) {
+    	String Topic="RealTimeRead";
+    	
+        CompletableFuture.runAsync(() -> {
+            try {
+                logger.info("🔥 Kafka RealTime ChatRead 전송 시도 (비동기)");
+                SendResult<String, Object> result = kafkaTemplate.send(Topic, infos).get();
+                logger.info("✅ Kafka 전송 성공: {}", result.getRecordMetadata());
+            } catch (Exception e) {
+                logger.error("❌ Kafka 전송 실패", e);
+                Throwable cause = e.getCause();
+                if (cause instanceof TimeoutException) {
+                    logger.warn("⚠️ Kafka 타임아웃");
+                } else if (cause instanceof org.apache.kafka.common.errors.NetworkException) {
+                    logger.warn("⚠️ Kafka 네트워크 오류");
+                } else {
+                    logger.warn("⚠️ Kafka 기타 오류");
+                }
+            }
+        });
+
+        logger.info("📨 ChatRead() 메서드는 즉시 반환됨 (Kafka 전송은 백그라운드)");
+    }
+    
+    @Async
     public void ChatRead(Map<String ,Object> ReadInfo) {
         String topic = "ChatRead";
 
@@ -55,38 +80,7 @@ public class Produce {
         });
 
         logger.info("📨 ChatRead() 메서드는 즉시 반환됨 (Kafka 전송은 백그라운드)");
-    	/*
-		String topic ="ChatRead";
-		Map<String ,Object> resultmsg =new HashMap<>();
-		Map<String, Object> config = kafkaTemplate.getProducerFactory().getConfigurationProperties();
-		try {
-		    logger.info("🔥 Kafka ChatRead 시도");
-		    SendResult<String, Object> result = kafkaTemplate.send(topic, ReadInfo).get(); // ⬅️ 동기 처리
-		    
-		    logger.info("✅ Kafka 전송 성공: {}", result.getRecordMetadata());
-		    resultmsg.put("result", true);
-		    resultmsg.put("reason", "success");
 
-		} catch (Exception e) {
-		    logger.error("❌ Kafka 전송 실패", e);
-		    resultmsg.put("result", false);
-		    Throwable cause = e.getCause();
-		    logger.info("aaaa :" +cause );
-		    if (cause instanceof TimeoutException) {
-		        resultmsg.put("reason", "타임아웃");
-		        resultmsg.put("code", 1002);
-		    } else if (cause instanceof org.apache.kafka.common.errors.NetworkException) {
-		        resultmsg.put("reason", "연결실패");
-		        resultmsg.put("code", 1003);
-		    } else {
-		        resultmsg.put("reason", "메시지");
-		        resultmsg.put("code", 1001);
-		    }
-
-		}
-
-		return ;
-*/
 	}
     	
     

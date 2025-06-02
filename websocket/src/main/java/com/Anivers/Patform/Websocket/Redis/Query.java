@@ -30,6 +30,9 @@ public class Query {
 	private RedisTemplate<String, Object> ChatPartiList;
 	
 	
+	
+	
+	
 	public boolean isParti(String ChatId, String UserId) {
 		
 		boolean result= false;
@@ -43,6 +46,16 @@ public class Query {
 		
 		
 		return result;
+	}
+	
+	public void ChatRemoveParti(String UserId, String ChatId) {
+		
+		try {
+			Long removedCount = ChatPartiList.opsForSet().remove(ChatId, UserId);
+			logger.info("제거 확인 :" + removedCount);
+		}catch(Exception e) {
+			logger.error("채팅참여 리스트 삭제 에러 :" + e);
+		}
 	}
 	
 	public void ChatParti(String UserId, String ChatId) {

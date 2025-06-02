@@ -32,12 +32,22 @@ public class Chat_Services {
 		this.kafka_producer = kafka_producer;
 	}
 	
-
-	
 	public List<Map<String, Object>> getParticiList(String ChatId){
 		List<Map<String, Object>> parti_list = new ArrayList<>();
 		
 		return parti_list;
+	}
+	
+	public void SendChatMessage(Map<String, Object> infos) {
+		logger.info("채팅 구독에게 보내는 채팅 :" + infos);
+        try {
+        String ChatId = infos.get("ChatId").toString();
+	    String destination = "/topic/read/" + ChatId;
+	    messagingTemplate.convertAndSend(destination, infos);
+	    logger.info("웹 소켓 메지시 전송 완료");
+        }catch(Exception e) {
+        	logger.error("에러 발생 :" + e);
+        }
 	}
 	
 	public void RealTimeRead(Map<String, Object> info) {
@@ -48,7 +58,7 @@ public class Chat_Services {
         try {
 	    String destination = "/topic/read/" + info.get("ChatId").toString();
 	    messagingTemplate.convertAndSend(destination, payload);
-	    kafka_producer.ChatRead(info);
+	    kafka_producer.RealTimeReacdChat(info);
         }catch(Exception e) {
         	logger.error("에러 발생 :" + e);
         }
@@ -67,18 +77,20 @@ public class Chat_Services {
 			    .collect(Collectors.toList());
 		
 		logger.info("messageids :" + unreadMessageIds);
-		
-		String ChatId =info.get("ChatId").toString(); 
-	    Map<String, Object> payload = new HashMap<>();
-	    payload.put("chatId", ChatId);
-	    payload.put("messageIds", unreadMessageIds);
-        logger.info("payload :" + payload);
-	    String destination = "/topic/read/" + ChatId;
-	    messagingTemplate.convertAndSend(destination, payload);
-	    logger.info("✅ 채팅방 {} 에 읽은 메시지 브로드캐스트 완료"+ ChatId);
-	    info.put("Messageids", unreadMessageIds);
-	    info.put("LastTime", unReadList.get(unReadList.size()-1).get("timestamp"));
-	    kafka_producer.ChatRead(info);
+		if(unreadMessageIds.size() != 0) {
+			String ChatId =info.get("ChatId").toString(); 
+		    Map<String, Object> payload = new HashMap<>();
+		    payload.put("chatId", ChatId);
+		    payload.put("messageIds", unreadMessageIds);
+	        logger.info("payload :" + payload);
+		    String destination = "/topic/read/" + ChatId;
+		    messagingTemplate.convertAndSend(destination, payload);
+		    logger.info("✅ 채팅방 {} 에 읽은 메시지 브로드캐스트 완료"+ ChatId);
+		    info.put("Messageids", unreadMessageIds);
+		    info.put("LastTime", unReadList.get(unReadList.size()-1).get("timestamp"));
+		    kafka_producer.ChatRead(info);
+		}
+
 		}catch(Exception e) {
 			logger.error("에러 발생 :" + e);
 		}

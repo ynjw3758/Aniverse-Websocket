@@ -1,0 +1,55 @@
+package com.Anivers.Patform.Websocket.Config;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.mongodb.config.AbstractMongoClientConfiguration;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
+import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+
+@Configuration
+@Configuration
+public class MongoConfig extends AbstractMongoClientConfiguration {
+
+    @Value("${spring.data.mongodb.uri}")
+    private String uri;
+
+    @Value("${spring.data.mongodb.database}")
+    private String chatDatabase;
+
+    // 기본 DB 이름 (Chat)
+    @Override
+    protected String getDatabaseName() {
+        return chatDatabase;
+    }
+
+    @Override
+    public MongoClient mongoClient() {
+        ConnectionString connectionString = new ConnectionString(uri);
+        MongoClientSettings mongoClientSettings = MongoClientSettings.builder()
+            .applyConnectionString(connectionString)
+            .build();
+        return MongoClients.create(mongoClientSettings);
+    }
+
+    // ✅ 기본 MongoTemplate (Chat DB)
+    @Bean
+    @Primary
+    public MongoTemplate mongoTemplate() {
+        return new MongoTemplate(
+            new SimpleMongoClientDatabaseFactory(mongoClient(), chatDatabase)
+        );
+    }
+
+    // ✅ 추가 MongoTemplate (Noti DB)
+    @Bean(name = "notiMongoTemplate")
+    public MongoTemplate notiMongoTemplate() {
+        return new MongoTemplate(
+            new SimpleMongoClientDatabaseFactory(mongoClient(), "Noti")
+        );
+    }
+}

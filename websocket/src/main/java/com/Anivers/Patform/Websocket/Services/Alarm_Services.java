@@ -21,8 +21,6 @@ public class Alarm_Services {
 		boolean isParti = false;
 		isParti = Redis.login_state(infos.get("UserId").toString());
         logger.info("현재 로그인 상태 :" + isParti);
-		
-		
 	}
 
 }

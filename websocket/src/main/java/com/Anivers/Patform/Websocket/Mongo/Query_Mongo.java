@@ -1,6 +1,7 @@
 package com.Anivers.Patform.Websocket.Mongo;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,15 +25,33 @@ public class Query_Mongo {
 	}
 	
 	
-	public List<Map>UnreadChat(Map<String, Object> info){
+	public Map<String, Object>UnreadChat(Map<String, Object> info){
+		Map<String, Object>result_msg = new HashMap<>();
 		List<Map> getList = new ArrayList<>();
 		Query lastReadQuery = new Query();
-		lastReadQuery.addCriteria(Criteria.where("chatId").is(info.get("ChatId")).
-				and("userId").is(info.get("UserId")));
+		lastReadQuery.addCriteria(Criteria.where("chatId").is(info.get("ChatId").toString()).
+				and("userId").is(info.get("UserId").toString()));
         LastChatRead lastread = new LastChatRead();
 		lastread  = mongo_template.findOne(lastReadQuery, LastChatRead.class);
+		logger.info("아니 기록좀 보자  :" + lastread);
 		if (lastread != null) {
-		    String chatId = lastread.getChatId();
+			logger.info("읽은 기록 존재");
+			logger.info("chatid :" + lastread.getChatId());
+			logger.info("getMessageId :" + lastread.getMessageId());
+			logger.info("getUserId :" + lastread.getUserId());
+			logger.info("getLastTime() :" + lastread.getLastTime());
+			Query unreadQuery = new Query();
+			unreadQuery.addCriteria(
+			    Criteria.where("chatId").is(lastread.getChatId())
+			        .and("timestamp").gt(lastread.getLastTime()) // ✅ 마지막 읽은 시간 이후
+			);
+			unreadQuery.with(Sort.by(Sort.Direction.DESC, "timestamp"));
+			unreadQuery.limit(300);
+			unreadQuery.fields().include("messageId").exclude("_id"); // 필요한 필드만
+
+			List<Map> unreadMessages = mongo_template.find(unreadQuery, Map.class, "Message");
+		    result_msg.put("msg", "Part");
+		    result_msg.put("unreaddata", unreadMessages);
 		    
 		    
 		    // 이후 로직 수행
@@ -42,13 +61,15 @@ public class Query_Mongo {
 		    Query unreadQuery = new Query();
 		    unreadQuery.addCriteria(Criteria.where("chatId").is(info.get("ChatId").toString())
 		        .and("rdMember").ne(info.get("UserId").toString())); // 내가 안 읽은 메시지
-		    unreadQuery.with(Sort.by(Sort.Direction.ASC, "timestamp")); // 오래된 순으로 정렬
+		    unreadQuery.with(Sort.by(Sort.Direction.DESC, "timestamp")); // 오래된 순으로 정렬
+		    unreadQuery.fields().include("messageId").exclude("_id"); // 필요한 필드만
 		    List<Map> unreadMessages = mongo_template.find(unreadQuery, Map.class, "Message");
-		    return unreadMessages;
+		    result_msg.put("msg", "All");
+		    result_msg.put("unreaddata", unreadMessages);
 		    
 		}
 		
-		return getList;
+		return result_msg;
 	}
 
 }

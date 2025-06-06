@@ -32,6 +32,30 @@ public class Produce {
         this.kafkaTemplate = kafkaTemplate;
     }
     
+    
+    @Async
+    public void SaveNoti(Map<String, Object> infos) {
+    	 String Topic="Noti";
+         CompletableFuture.runAsync(() -> {
+             try {
+                 logger.info("🔥 Kafka Noti 전송 시도 (비동기)");
+                 SendResult<String, Object> result = kafkaTemplate.send(Topic, infos).get();
+                 logger.info("✅ Kafka 전송 성공: {}", result.getRecordMetadata());
+             } catch (Exception e) {
+                 logger.error("❌ Kafka 전송 실패", e);
+                 Throwable cause = e.getCause();
+                 if (cause instanceof TimeoutException) {
+                     logger.warn("⚠️ Kafka 타임아웃");
+                 } else if (cause instanceof org.apache.kafka.common.errors.NetworkException) {
+                     logger.warn("⚠️ Kafka 네트워크 오류");
+                 } else {
+                     logger.warn("⚠️ Kafka 기타 오류");
+                 }
+             }
+         });
+    	 
+    }
+    
     @Async
     public void RealTimeReacdChat(Map<String , Object> infos) {
     	String Topic="RealTimeRead";

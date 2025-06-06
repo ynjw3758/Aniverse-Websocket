@@ -40,14 +40,16 @@ public class Chat_Services {
 	
 	public void SendChatMessage(Map<String, Object> infos) {
 		logger.info("채팅 구독에게 보내는 채팅 :" + infos);
-        try {
-        String ChatId = infos.get("ChatId").toString();
-	    String destination = "/topic/read/" + ChatId;
-	    messagingTemplate.convertAndSend(destination, infos);
-	    logger.info("웹 소켓 메지시 전송 완료");
-        }catch(Exception e) {
-        	logger.error("에러 발생 :" + e);
-        }
+		try {
+		    String chatId = infos.get("chatId").toString();
+		    String destination = "/topic/chat/" + chatId;
+
+		    messagingTemplate.convertAndSend(destination, infos);
+		    logger.info("✅ 채팅 메시지 전송 완료 → {}", destination);
+
+		} catch (Exception e) {
+		    logger.error("❌ 채팅 메시지 전송 중 예외 발생", e);
+		}
 	}
 	
 	public void RealTimeRead(Map<String, Object> info) {
@@ -67,28 +69,48 @@ public class Chat_Services {
 	@Async
 	public void ReadCnt(Map<String, Object> info) {
 		List<Map<String, Object>> result = new ArrayList<>();
+		Map<String, Object> unread_data = new HashMap<>();
 		List<Map> unReadList = new ArrayList<>();
 		try {
-		unReadList =mongo.UnreadChat(info);
-		logger.info("안읽은 데이터 :" + unReadList);
+			unread_data =mongo.UnreadChat(info);
+
+		logger.info("안읽은 데이터 :" + unread_data);
+		unReadList = (List<Map>) unread_data.get("unreaddata");
 		List<String> unreadMessageIds = unReadList.stream()
 			    .map(msg -> (String) msg.get("messageId"))
 			    .filter(Objects::nonNull)
 			    .collect(Collectors.toList());
-		
-		logger.info("messageids :" + unreadMessageIds);
+		logger.info("unreadMessageIds :" + unreadMessageIds);
+		logger.info("messageids :" + unread_data);
 		if(unreadMessageIds.size() != 0) {
-			String ChatId =info.get("ChatId").toString(); 
-		    Map<String, Object> payload = new HashMap<>();
-		    payload.put("chatId", ChatId);
-		    payload.put("messageIds", unreadMessageIds);
-	        logger.info("payload :" + payload);
-		    String destination = "/topic/read/" + ChatId;
-		    messagingTemplate.convertAndSend(destination, payload);
-		    logger.info("✅ 채팅방 {} 에 읽은 메시지 브로드캐스트 완료"+ ChatId);
-		    info.put("Messageids", unreadMessageIds);
-		    info.put("LastTime", unReadList.get(unReadList.size()-1).get("timestamp"));
-		    kafka_producer.ChatRead(info);
+			if(unread_data.get("msg").equals("All")) {
+				String ChatId =info.get("ChatId").toString(); 
+			    Map<String, Object> payload = new HashMap<>();
+			    payload.put("chatId", ChatId);
+			    payload.put("messageIds", unreadMessageIds);
+		        logger.info("payload :" + payload);
+		        payload.put("msg", "All");
+			    String destination = "/topic/read/" + ChatId;
+			    messagingTemplate.convertAndSend(destination, payload);
+			    logger.info("✅ 채팅방 {} 에 읽은 메시지 브로드캐스트 완료"+ ChatId);
+			    info.put("Messageids", unreadMessageIds);
+			    info.put("LastTime", unReadList.get(unReadList.size()-1).get("timestamp"));
+			    kafka_producer.ChatRead(info);
+			}else {
+				logger.info("마지막 읽은 데이터 존재 그 이후 부터 리카운트 감소 및 웹 소켓 데이터 전송");
+				String ChatId =info.get("ChatId").toString(); 
+			    Map<String, Object> payload = new HashMap<>();
+			    payload.put("chatId", ChatId);
+			    payload.put("messageIds", unreadMessageIds);
+			    payload.put("msg", "Part");
+		        logger.info("payload :" + payload);
+			    String destination = "/topic/read/" + ChatId;
+			    messagingTemplate.convertAndSend(destination, payload);
+			    logger.info("✅ 채팅방 {} 에 읽은 메시지 브로드캐스트 완료"+ ChatId);
+			    info.put("Messageids", unreadMessageIds);
+			    info.put("LastTime", unReadList.get(unReadList.size()-1).get("timestamp"));
+			    kafka_producer.ChatRead(info);
+			}
 		}
 
 		}catch(Exception e) {

@@ -51,7 +51,6 @@ public class Stomp_Handler implements ChannelInterceptor {
                         userIds = objectMapper.readValue(row, new TypeReference<List<String>>() {});
                         logger.info("chatid:" + chatId);
                         boolean allowed = RedisQuery.isUserInChat(chatId, userIds);
-                        logger.info("아 오냐?" + userIds);
                         if (!allowed) {
                             throw new MessagingException("❌ 채팅방 참여자가 아닙니다.");
                         }else RedisQuery.ChatParti(UserId, chatId);

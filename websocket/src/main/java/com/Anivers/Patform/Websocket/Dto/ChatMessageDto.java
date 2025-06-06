@@ -16,9 +16,18 @@ public class ChatMessageDto {
     private List<String> inviteIds;
     private int recount;
     private String messageId;
+    private String roomName;
 
     // ✅ 기본 생성자, getter/setter
     public ChatMessageDto() {}
+    
+    public String getRoomName() {
+    	return roomName;
+    }
+    
+    public void setRoomName(String roomName) {
+    	this.roomName = roomName;
+    }
     
 	public void setMessageId(String messageId) {
 	  	 this.messageId = messageId;

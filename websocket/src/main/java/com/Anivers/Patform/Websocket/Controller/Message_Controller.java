@@ -19,6 +19,7 @@ import com.Anivers.Patform.Websocket.Dto.ChatMessageDto;
 import com.Anivers.Patform.Websocket.Kafka.Produce;
 import com.Anivers.Patform.Websocket.Redis.Query;
 import com.Anivers.Patform.Websocket.dispatcher.Chat_dispatcher;
+import com.Anivers.Patform.Websocket.dispatcher.Noti_dispatcher;
 
 @Controller
 public class Message_Controller {
@@ -28,28 +29,33 @@ public class Message_Controller {
 	private Query Redis;
 	private Produce kafka_producer;
 	private Chat_dispatcher ch_dispatcher;
+	private Noti_dispatcher nt_dispatcher;
 	
     public Message_Controller(SimpMessagingTemplate messagingTemplate, Produce kafka_producer ,Query Redis,
-    		Chat_dispatcher ch_dispatcher) {
+    		Chat_dispatcher ch_dispatcher ,Noti_dispatcher nt_dispatcher) {
         this.messagingTemplate = messagingTemplate; // ✅ 여기서 초기화!
         this.kafka_producer = kafka_producer;
         this.Redis =Redis;
         this.ch_dispatcher = ch_dispatcher;
+        this.nt_dispatcher = nt_dispatcher;
         
     }
 	
     @MessageMapping("/chat.send") // ✅ 프론트의 /app/chat.send 와 매칭됨
     public void receiveChatMessage(@Payload ChatMessageDto message, Principal principal) {
     	boolean isSuccess= false;
+    	logger.info("카운트 :" + message.getRecount());
     	Map<String, Object> Kafka_Proeducer = new HashMap<>();
     	Map<String, Object> resultmsg = new HashMap<>();
+    	int count =message.getRecount();
+    	int recnt= count-1;
     	Kafka_Proeducer.put("ChatId", message.getChatId());
     	Kafka_Proeducer.put("SendId", message.getSendId());
     	Kafka_Proeducer.put("SendProfile", message.getProfile());
     	Kafka_Proeducer.put("SendNickname", message.getNickname());
     	Kafka_Proeducer.put("SendMsg", message.getMessage());
     	Kafka_Proeducer.put("SendTime", message.getTimestamp());
-    	Kafka_Proeducer.put("ReCount", message.getRecount());
+    	Kafka_Proeducer.put("ReCount", recnt);
     	Kafka_Proeducer.put("InviteIds", message.getInviteIds());
     	Kafka_Proeducer.put("MessageId", message.getMessageId());
     	resultmsg= kafka_producer.SendChat(Kafka_Proeducer);
@@ -71,12 +77,24 @@ public class Message_Controller {
         		if(isPartiUser) {
         			logger.info("현재 채팅 방에 존재");
         			Map<String, Object> read = new HashMap<>();
+        			Map<String ,Object> sendChat = new HashMap<>();
         			read.put("ChatId", message.getChatId());
         			read.put("UserId", toUser);
         			read.put("MessageId", message.getMessageId());
         			read.put("LastTime", message.getTimestamp());
-        			Kafka_Proeducer.put("type", "other");
-        			//ch_dispatcher.SendChatMessage(Kafka_Proeducer);
+        
+        			sendChat.put("messageId", message.getMessageId());
+        			sendChat.put("chatId", message.getChatId());
+        			sendChat.put("sendId", message.getSendId());
+        			sendChat.put("profile", message.getProfile());
+        			sendChat.put("nickname", message.getNickname());
+        			sendChat.put("message", message.getMessage());
+        			sendChat.put("timestamp", message.getTimestamp());
+        			sendChat.put("recount", recnt);
+        			sendChat.put("type", "other");
+        			sendChat.put("isSend", true);
+        			logger.info("두 번째 카운트 :" + sendChat.get("recount"));
+        			ch_dispatcher.SendChatMessage(sendChat);
         			ch_dispatcher.ReatTimeRead(read);
         		}
         		else {
@@ -91,6 +109,7 @@ public class Message_Controller {
                     	send_msg.put("SendMsg", message.getMessage());
                     	send_msg.put("SendTime", message.getTimestamp());
                     	send_msg.put("MessageId", message.getMessageId());
+                    	send_msg.put("RoomName", message.getRoomName());
                     	
                 	    messagingTemplate.convertAndSendToUser(
                 	    		toUser,           // userId (principal name)
@@ -100,6 +119,19 @@ public class Message_Controller {
                 	    
             		}else {
             			logger.info("현재 로그인하지 않음 알람 저장");
+            			Map<String, Object> Chat_Noti = new HashMap<>();
+            			Chat_Noti.put("type","Chat");
+            			Chat_Noti.put("ChatId",message.getChatId());
+            			//Chat_Noti.put("sendId",message.getSendId());
+            			//Chat_Noti.put("profile", message.getProfile());
+            			//Chat_Noti.put("nickname", message.getNickname());
+            			//Chat_Noti.put("message", message.getMessage());
+            			Chat_Noti.put("timestamp", message.getTimestamp());
+            			Chat_Noti.put("MessageId", message.getMessageId());
+            			Chat_Noti.put("RoomName", message.getRoomName());
+            			Chat_Noti.put("IsRead", false);
+            			Chat_Noti.put("UserId", toUser);
+            			nt_dispatcher.SaveNoti(Chat_Noti);
             		}
         			}
 

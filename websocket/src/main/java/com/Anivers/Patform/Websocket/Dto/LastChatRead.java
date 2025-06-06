@@ -2,11 +2,20 @@ package com.Anivers.Patform.Websocket.Dto;
 
 import java.time.LocalDateTime;
 
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Data
+@Document(collection = "LastChatRead")
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class LastChatRead {
 	
 	private String chatId;

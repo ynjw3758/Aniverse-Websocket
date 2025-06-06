@@ -54,10 +54,8 @@ public class Chat_Handler extends TextWebSocketHandler {
 	    	   String ChatId = data.get("ChatId").toString();
 	    	   values.put("UserId", UserId);
 	    	   values.put("ChatId", ChatId);
-	    	   
 	    	    session.getAttributes().put("UserId", UserId);
 	    	    session.getAttributes().put("ChatId", ChatId);
-	    	    
 	    	   logger.info("데이터 넘기기전에 조회해서 해당 db의 아이디만 브로드캐스팅하자 : "+ session);
 	    	   ch_dispatcher.ReadCnt(data);
 
@@ -70,8 +68,6 @@ public class Chat_Handler extends TextWebSocketHandler {
 	    	logger.info("❌ 연결 종료: " + session);
 	        String userId = (String) session.getAttributes().get("UserId");
 	        String chatId = (String) session.getAttributes().get("ChatId");
-	        logger.info("chatid :" + chatId);
-	        logger.info("userId :" + userId);
 	        Redis.ChatRemoveParti(userId, chatId);
 	        
 	    }
